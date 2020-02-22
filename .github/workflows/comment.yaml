@@ -56,8 +56,8 @@ jobs:
                 add_reaction "confused"
               else
                 # Clone and checkout the pull request.
-                git clone ${{ github.repository.clone_url }}
-                cd "${{ github.repository.name }}"
+                git clone ${{ github.event.repository.clone_url }}
+                cd "${{ github.event.repository.name }}"
                 git fetch origin pull/${{ github.issue.number }}/head:the-pr
                 git checkout the-pr
 
