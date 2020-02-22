@@ -44,7 +44,7 @@ jobs:
 
           # In event of failure, try and notify users.
           function failure() {
-              add_comment ":interrobang: Something went wrong doing `[testpypi]`, please [check the log](https://github.com/${{ github.repository }}/runs/${{ github.run_id }})."
+              add_comment ':interrobang: Something went wrong doing `[testpypi]`, please [check the log](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).'
               exit 1
           }
           trap "failure" ERR
