@@ -28,20 +28,30 @@ jobs:
                  -d "{\"body\": \"$1\"}"
           }
 
-          if [ "$is_pr" = "True" ]; then
-            if [ "${{ github.event.issue.state }}" = "closed" ]; then
-              # Add a comment to the issue indicating [testpypi] only triggers
-              # for open pull requests.
-              add_comment ':scream: `[testpypi]` only runs on open pull requests!'
-            else
-              add_comment ':scream: :boom: :alien: :boom: :scream:'
-              curl -X POST \
+          # add_reaction "reaction_type"
+          #
+          # reaction_type can be:
+          #   "+1", "-1", "laugh", "confused", "heart", "hooray", "rocket", "eyes"
+          function add_reaction() {
+            curl -X POST \
                --url 'https://api.github.com/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions' \
                -H 'Accept: application/vnd.github.squirrel-girl-preview' \
                -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
                -H 'Content-Type: application/json' \
-               -d '{"content": "rocket"}'
+               -d "{\"content\": \"$1\"}"
+          }
+
+          if [ "$is_pr" = "True" ]; then
+            if [ "${{ github.event.issue.state }}" = "closed" ]; then
+              # Add a comment to the issue indicating [testpypi] only triggers
+              # for open pull requests.
+              add_comment ':scream: `[testpypi]` only runs on **open** pull requests!'
+              add_reaction "confused"
+            else
+              add_comment ':scream: :boom: :alien: :boom: :scream:'
+              add_reaction "rocket"
             fi
           else
             add_comment ':no_entry_sign: `[testpypi]` only applies to open pull requests.'
+            add_reaction "confused"
           fi
