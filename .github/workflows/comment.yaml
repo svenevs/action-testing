@@ -11,3 +11,11 @@ jobs:
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: echo "$GITHUB_CONTEXT"
+      - name: Add Rocket
+        run: |
+          curl -X POST \
+               --url "https://api.github.com/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+               -H "Accept: application/vnd.github.squirrel-girl-preview" \
+               -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+               -H 'Content-Type: application/json' \
+               -d '{"content": "rocket"}'
