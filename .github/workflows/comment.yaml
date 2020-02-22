@@ -4,7 +4,7 @@ on:
     types: [created]
 
 jobs:
-  approval:
+  dispatch:
     runs-on: ubuntu-latest
     if: contains(github.event.comment.body, '[testpypi]')
     steps:
@@ -35,12 +35,19 @@ jobs:
           #   "+1", "-1", "laugh", "confused", "heart", "hooray", "rocket", "eyes"
           function add_reaction() {
             curl -X POST \
-               --url 'https://api.github.com/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions' \
-               -H 'Accept: application/vnd.github.squirrel-girl-preview' \
-               -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-               -H 'Content-Type: application/json' \
-               -d "{\"content\": \"$1\"}"
+                 --url 'https://api.github.com/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions' \
+                 -H 'Accept: application/vnd.github.squirrel-girl-preview' \
+                 -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+                 -H 'Content-Type: application/json' \
+                 -d "{\"content\": \"$1\"}"
           }
+
+          # In event of failure, try and notify users.
+          function failure() {
+              add_comment ":interrobang: Something went wrong doing `[testpypi]`, please [check the log](https://github.com/${{ github.repository }}/runs/${{ github.run_id }})."
+              exit 1
+          }
+          trap "failure" ERR
 
           association="${{ github.event.comment.author_association }}"
           html_url="${{ github.event.issue.html_url }}"
@@ -65,6 +72,13 @@ jobs:
                 pip install -U pip setuptools wheel
                 pip install tox twine
                 export SPHINX_BOOTSTRAP_THEME_DEV_VERSION="$(date +%s)"
+
+                # Package and upload.
+                tox -e dist
+                twine upload --repository-url https://test.pypi.org/legacy/ \
+                             --username "__token__" \
+                             --password "${{ secrets.TEST_PYPI_PASSWORD }}" \
+                             dist/*
                 add_comment "devno: $SPHINX_BOOTSTRAP_THEME_DEV_VERSION"
                 add_reaction "rocket"
               fi
