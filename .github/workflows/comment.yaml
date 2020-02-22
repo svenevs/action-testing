@@ -1,4 +1,4 @@
-name: Issue
+name: TestPyPI
 on:
   issue_comment:
     types: [created]
@@ -6,18 +6,19 @@ on:
 jobs:
   approval:
     runs-on: ubuntu-latest
-    if: contains(github.event.comment.body, '[testpypi]') && (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')
+    if: contains(github.event.comment.body, '[testpypi]')
     steps:
+      - name: Setup Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.x
       - name: Dump GitHub Context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: echo "$GITHUB_CONTEXT"
-      - name: Validate Status
+      - name: Do Robotics
         run: |
           set -eo
-          html_url="${{ github.event.issue.html_url }}"
-          pr_url="https://github.com/${{ github.repository }}/pull"
-          is_pr="$(python -c "print('$html_url'.startswith('$pr_url'))")"
 
           # add_comment "some comment data in $1"
           function add_comment() {
@@ -41,17 +42,37 @@ jobs:
                -d "{\"content\": \"$1\"}"
           }
 
-          if [ "$is_pr" = "True" ]; then
-            if [ "${{ github.event.issue.state }}" = "closed" ]; then
-              # Add a comment to the issue indicating [testpypi] only triggers
-              # for open pull requests.
-              add_comment ':scream: `[testpypi]` only runs on **open** pull requests!'
-              add_reaction "confused"
+          association="${{ github.event.comment.author_association }}"
+          html_url="${{ github.event.issue.html_url }}"
+          pr_url="https://github.com/${{ github.repository }}/pull"
+          is_pr="$(python -c "print('$html_url'.startswith('$pr_url'))")"
+
+          if [[ "$association" = "OWNER" ]] || [[ "$association" == "COLLABORATOR" ]]; then
+            if [[ "$is_pr" == "True" ]]; then
+              if [[ "${{ github.event.issue.state }}" == "closed" ]]; then
+                # Add a comment to the issue indicating [testpypi] only triggers
+                # for open pull requests.
+                add_comment ':scream: `[testpypi]` only runs on **open** pull requests!'
+                add_reaction "confused"
+              else
+                # Clone and checkout the pull request.
+                git clone ${{ github.repository.clone_url }}
+                cd "${{ github.repository.name }}"
+                git fetch origin pull/${{ github.issue.number }}/head:the-pr
+                git checkout the-pr
+
+                # Install the build utilities.
+                pip install -U pip setuptools wheel
+                pip install tox twine
+                export SPHINX_BOOTSTRAP_THEME_DEV_VERSION="$(date +%s)"
+                add_comment "devno: $SPHINX_BOOTSTRAP_THEME_DEV_VERSION"
+                add_reaction "rocket"
+              fi
             else
-              add_comment ':scream: :boom: :alien: :boom: :scream:'
-              add_reaction "rocket"
+              add_comment ':no_entry_sign: `[testpypi]` only applies to open pull requests.'
+              add_reaction "confused"
             fi
           else
-            add_comment ':no_entry_sign: `[testpypi]` only applies to open pull requests.'
+            add_comment ':no_entry_sign: `[testpypi]` for owner / collaborators, please ask one of them for help!'
             add_reaction "confused"
           fi
