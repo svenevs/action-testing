@@ -1,7 +1,7 @@
 name: TestPyPI
 on:
   issue_comment:
-    types: [created]
+    types: [created, edited]
 
 jobs:
   dispatch:
@@ -22,11 +22,12 @@ jobs:
 
           # add_comment "some comment data in $1"
           function add_comment() {
+            nl=$'\n'
             curl -X POST \
                  --url '${{ github.event.issue.comments_url }}' \
                  -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
                  -H 'Content-Type: application/json' \
-                 -d "{\"body\": \"$1\"}"
+                 -d '{"body": "> ${{ github.event.comment.html_url }}'"$nl$nl$1"'"}"'
           }
 
           # add_reaction "reaction_type"
