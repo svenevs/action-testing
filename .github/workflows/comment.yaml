@@ -6,7 +6,7 @@ on:
 jobs:
   approval:
     runs-on: ubuntu-latest
-    if: contains('[testpypi]', github.event.comment.body)
+    if: contains(github.event.comment.body, '[testpypi]') && (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')
     steps:
       - name: Dump GitHub context
         env:
