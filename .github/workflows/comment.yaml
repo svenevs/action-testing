@@ -14,24 +14,27 @@ jobs:
         run: echo "$GITHUB_CONTEXT"
       - name: Validate Status
         run: |
+          set -eo
           html_url="${{ github.event.issue.html_url }}"
           pr_url="https://github.com/${{ github.repository }}/pull"
-          is_pr="$(python -c 'print("$html_url".startswith("$pr_url"))')"
+          is_pr="$(python -c "print('$html_url'.startswith('$pr_url'))")"
+
+          # add_comment "some comment data in $1"
+          function add_comment() {
+            curl -X POST \
+                 --url '${{ github.event.issue.comments_url }}' \
+                 -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+                 -H 'Content-Type: application/json' \
+                 -d "{\"body\": \"$1\"}"
+          }
+
           if [ "$is_pr" = "True" ]; then
             if [ "${{ github.event.issue.state }}" = "closed" ]; then
               # Add a comment to the issue indicating [testpypi] only triggers
               # for open pull requests.
-              curl -X POST \
-                   --url '${{ github.event.issue.comments_url }}' \
-                   -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-                   -H 'Content-Type: application/json' \
-                   -d '{"body": ":scream: `[testpypi]` only runs on open pull requests!"}'
+              add_comment ':scream: `[testpypi]` only runs on open pull requests!'
             else
-              curl -X POST \
-                   --url '${{ github.event.issue.comments_url }}' \
-                   -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-                   -H 'Content-Type: application/json' \
-                   -d '{"body": ":scream: :boom: :alien: :boom: :scream:"}'
+              add_comment ':scream: :boom: :alien: :boom: :scream:'
               curl -X POST \
                --url 'https://api.github.com/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions' \
                -H 'Accept: application/vnd.github.squirrel-girl-preview' \
@@ -39,4 +42,6 @@ jobs:
                -H 'Content-Type: application/json' \
                -d '{"content": "rocket"}'
             fi
+          else
+            add_comment ':no_entry_sign: `[testpypi]` only applies to open pull requests.'
           fi
