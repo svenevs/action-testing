@@ -18,7 +18,7 @@ jobs:
         run: echo "$GITHUB_CONTEXT"
       - name: Do Robotics
         run: |
-          set -eo
+          set -exo
 
           # add_comment "some comment data in $1"
           function add_comment() {
@@ -58,7 +58,7 @@ jobs:
                 # Clone and checkout the pull request.
                 git clone ${{ github.event.repository.clone_url }}
                 cd "${{ github.event.repository.name }}"
-                git fetch origin pull/${{ github.issue.number }}/head:the-pr
+                git fetch origin pull/${{ github.event.issue.number }}/head:the-pr
                 git checkout the-pr
 
                 # Install the build utilities.
