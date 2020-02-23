@@ -1,12 +1,12 @@
 name: TestPyPI
 on:
   issue_comment:
-    types: [created, edited]
+    types: [created]
 
 jobs:
   dispatch:
     runs-on: ubuntu-latest
-    if: contains(github.event.comment.body, '[testpypi]')
+    if: contains(github.event.comment.body, '[testpypi]') && (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')
     steps:
       - name: Setup Python
         uses: actions/setup-python@v1
@@ -57,44 +57,39 @@ jobs:
           }
           trap "failure" ERR
 
-          association="${{ github.event.comment.author_association }}"
           html_url="${{ github.event.issue.html_url }}"
           pr_url="https://github.com/${{ github.repository }}/pull"
           is_pr="$(python -c "print('$html_url'.startswith('$pr_url'))")"
 
-          if [[ "$association" = "OWNER" ]] || [[ "$association" == "COLLABORATOR" ]]; then
-            if [[ "$is_pr" == "True" ]]; then
-              if [[ "${{ github.event.issue.state }}" == "closed" ]]; then
-                # Add a comment to the issue indicating [testpypi] only triggers
-                # for open pull requests.
-                add_comment ':scream: `[testpypi]` only runs on **open** pull requests!'
-                add_reaction "confused"
-              else
-                # Clone and checkout the pull request.
-                git clone ${{ github.event.repository.clone_url }}
-                cd "${{ github.event.repository.name }}"
-                git fetch origin pull/${{ github.event.issue.number }}/head:the-pr
-                git checkout the-pr
-
-                # Install the build utilities.
-                pip install -U pip setuptools wheel
-                pip install tox twine
-                export SPHINX_BOOTSTRAP_THEME_DEV_VERSION="$(date +%s)"
-
-                # Package and upload.
-                tox -e dist
-                twine upload --repository-url https://test.pypi.org/legacy/ \
-                             --username "__token__" \
-                             --password "${{ secrets.TEST_PYPI_PASSWORD }}" \
-                             dist/*
-                add_comment "devno: $SPHINX_BOOTSTRAP_THEME_DEV_VERSION"
-                add_reaction "rocket"
-              fi
-            else
-              add_comment ':no_entry_sign: `[testpypi]` only applies to open pull requests.'
+          if [[ "$is_pr" == "True" ]]; then
+            if [[ "${{ github.event.issue.state }}" == "closed" ]]; then
+              # Add a comment to the issue indicating [testpypi] only triggers
+              # for open pull requests.
+              add_comment ':scream: `[testpypi]` only runs on **open** pull requests!'
               add_reaction "confused"
+            else
+              # Clone and checkout the pull request.
+              git clone ${{ github.event.repository.clone_url }}
+              cd "${{ github.event.repository.name }}"
+              git fetch origin pull/${{ github.event.issue.number }}/head:the-pr
+              git checkout the-pr
+
+              # Install the build utilities.
+              pip install -U pip setuptools wheel
+              pip install tox twine
+              export SPHINX_BOOTSTRAP_THEME_DEV_VERSION="$(date +%s)"
+
+              # Package and upload.
+              tox -e dist
+              twine upload --repository-url https://test.pypi.org/legacy/ \
+                           --username "__token__" \
+                           --password "${{ secrets.TEST_PYPI_PASSWORD }}" \
+                           dist/*
+              add_comment "devno: $SPHINX_BOOTSTRAP_THEME_DEV_VERSION"
+              add_reaction "rocket"
             fi
           else
-            add_comment ':no_entry_sign: `[testpypi]` is for owner / collaborators, please ask one of them for help!'
+            add_comment ':no_entry_sign: `[testpypi]` only applies to open pull requests.'
             add_reaction "confused"
           fi
+        fi
