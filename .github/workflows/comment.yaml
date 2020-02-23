@@ -22,13 +22,14 @@ jobs:
 
           # add_comment "some comment data in $1"
           function add_comment() {
-            # > { url to issue triggering this comment }
+            # > @author _triggered in_ {url to comment }
             #
             # $1
             #
-            # Is the comment being generated.
-            nl=$'\n'
-            comment="> ${{ github.event.comment.html_url }}$nl$nl$1"
+            # Is the comment being generated.  Newlines are not OK to send, and
+            # seems to be weird bug where I have to manually </blockquote>,
+            # using <br /> didn't fix, everything stayed inside the quote.
+            comment="> @${{ github.event.comment.user.login }} _triggered in_ ${{ github.event.comment.html_url }} </blockquote>$1"
             curl -X POST \
                  --url '${{ github.event.issue.comments_url }}' \
                  -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
@@ -94,6 +95,6 @@ jobs:
               add_reaction "confused"
             fi
           else
-            add_comment ':no_entry_sign: `[testpypi]` for owner / collaborators, please ask one of them for help!'
+            add_comment ':no_entry_sign: `[testpypi]` is for owner / collaborators, please ask one of them for help!'
             add_reaction "confused"
           fi
