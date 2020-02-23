@@ -92,4 +92,3 @@ jobs:
             add_comment ':no_entry_sign: `[testpypi]` only applies to open pull requests.'
             add_reaction "confused"
           fi
-        fi
