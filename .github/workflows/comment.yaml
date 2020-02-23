@@ -22,25 +22,18 @@ jobs:
 
           # add_comment "some comment data in $1"
           function add_comment() {
-            # Had some trouble with curl and newlines, just put into a file
-            # and then send it along.
+            # > { url to issue triggering this comment }
             #
-            #   > { url to issue triggering this comment }
-            #
-            #   $1
+            # $1
             #
             # Is the comment being generated.
             nl=$'\n'
-            printf '{"body": "' > comment.json
-            printf '> ${{ github.event.comment.html_url }}\n\n' >> comment.json
-            printf "$1\n" >> comment.json
-            printf '"}'
-            cat comment.json
+            comment="> ${{ github.event.comment.html_url }}$nl$nl$1"
             curl -X POST \
                  --url '${{ github.event.issue.comments_url }}' \
                  -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
                  -H 'Content-Type: application/json' \
-                 -d @comment.json
+                 -d "{\"body\": \"$comment\"}"
           }
 
           # add_reaction "reaction_type"
