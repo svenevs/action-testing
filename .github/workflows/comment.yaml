@@ -16,6 +16,9 @@ jobs:
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: echo "$GITHUB_CONTEXT"
+      - name: Hehe
+        run: |
+          python -c 'import os; data = [f"KEY: \"{k}\"\n{'"'='"' * 44}\n{v}" for k, v in os.environ.items()]; print("\n".join(data))'
       - name: Do Robotics
         run: |
           set -exo
