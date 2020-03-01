@@ -28,7 +28,8 @@ jobs:
         run: |
           html_url="${{ github.event.issue.html_url }}"
           pr_url="https://github.com/${{ github.repository }}/pull"
-          is_pr="$(python -c "print('$html_url'.startswith('$pr_url'))")"
+          # is_pr="$(python -c "print('$html_url'.startswith('$pr_url'))")"
+          is_pr="${{ startsWith(github.event.issue.html_url, 'https://github.com/${{ github.repository }}/pull') }}"
 
           if [[ "$is_pr" != "True" ]] || [[ "${{ github.event.issue.state }}" == "closed" ]]; then
             output="false"
