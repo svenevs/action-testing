@@ -8,17 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.comment.body, '[testpypi]') && (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')
     steps:
-      - name: Setup Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: 3.x
-      - name: Dump GitHub Context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
-      - name: Hehe
-        run: |
-          python -c 'import os; data = [f"KEY: \"{k}\"\n{'"'='"' * 44}\n{v}" for k, v in os.environ.items()]; print("\n".join(data))'
       # Sets two output variables accessible by `steps.pr_check.<var>`:
       #   - is_open_pr: 'true' or 'false', depending on if the comment was added on an open pull request.
       #   - response_header: '> @<author> _triggered in_ <comment url> </blockquote>'
@@ -26,28 +15,14 @@ jobs:
       - name: Detect Open Pull Request
         id: pr_check
         run: |
-          html_url="${{ github.event.issue.html_url }}"
-          pr_url="https://github.com/${{ github.repository }}/pull"
-          # is_pr="$(python -c "print('$html_url'.startswith('$pr_url'))")"
           is_pr="${{ startsWith(github.event.issue.html_url, 'https://github.com/${{ github.repository }}/pull') }}"
-
-          if [[ "$is_pr" != "True" ]] || [[ "${{ github.event.issue.state }}" == "closed" ]]; then
+          if [[ "$is_pr" == "false" ]] || [[ "${{ github.event.issue.state }}" == "closed" ]]; then
             output="false"
           else
             output="true"
           fi
           echo "::set-output name=is_open_pr::$output"
           echo "::set-output name=response_header::> @${{ github.event.comment.user.login }} _triggered in_ ${{ github.event.comment.html_url }} </blockquote>"
-      - name: DEBUG
-        run: |
-          echo "is_open_pr: ${{ steps.pr_check.outputs.is_open_pr }}"
-          echo "response_header: ${{ steps.pr_check.outputs.response_header }}"
-      - name: DEBUG true
-        if: steps.pr_check.outputs.is_open_pr == 'true'
-        run: echo treuuuuuuuu
-      - name: DEBUG false
-        if: steps.pr_check.outputs.is_open_pr == 'false'
-        run: echo fallllllse
       - name: Invalid testpypi Request
         if: steps.pr_check.outputs.is_open_pr == 'false'
         uses: actions/github-script@0.8.0
@@ -60,6 +35,12 @@ jobs:
               repo: context.repo.repo,
               body: '${{ steps.pr_check.outputs.response_header }} :no_entry_sign: `[testpypi]` only applies to open pull requests.'
             })
+      
+      - name: Setup Python
+        if: steps.pr_check.outputs.is_open_pr == 'true'
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.x
       - name: Prepare Distribution
         if: steps.pr_check.outputs.is_open_pr == 'true'
         run: |
@@ -75,7 +56,13 @@ jobs:
           pip install -U pip setuptools wheel
           pip install tox
           
+          # Gerrymander the version with a unique dev version to upload
+          # (cannot re-upload same version number more than once).
+          
           exit 1
+      - name: DEBUG intermediate
+        if: steps.pr_check.outputs.is_open_pr == 'true'
+        run: echo 'does it still report errors if thing has a thing between them?'
       - name: Report Errors
         if: failure()
         uses: actions/github-script@0.8.0
