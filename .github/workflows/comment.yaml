@@ -31,12 +31,22 @@ jobs:
           is_pr="$(python -c "print('$html_url'.startswith('$pr_url'))")"
 
           if [[ "$is_pr" != "True" ]] || [[ "${{ github.event.issue.state }}" == "closed" ]]; then
-            output="true"
-          else
             output="false"
+          else
+            output="true"
           fi
           echo "##set-output name=is_open_pr::$output"
           echo "##set-output name=response_header::> @${{ github.event.comment.user.login }} _triggered in_ ${{ github.event.comment.html_url }} </blockquote>"
+      - name: DEBUG
+        run: |
+          echo "is_open_pr: ${{ steps.pr_check.outputs.is_open_pr }}"
+          echo "response_header: ${{ steps.pr_check.outputs.response_header }}"
+      - name: DEBUG true
+        if: steps.pr_check.outputs.is_open_pr == 'true'
+        run: echo treuuuuuuuu
+      - name: DEBUG false
+        if: steps.pr_check.outputs.is_open_pr == 'false'
+        run: echo fallllllse
       - name: Invalid testpypi Request
         if: steps.pr_check.outputs.is_open_pr == 'false'
         uses: actions/github-script@0.8.0
@@ -47,7 +57,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '${{ steps.pr_check.response_header }} :no_entry_sign: `[testpypi]` only applies to open pull requests.'
+              body: '${{ steps.pr_check.outputs.response_header }} :no_entry_sign: `[testpypi]` only applies to open pull requests.'
             })
       - name: Prepare Distribution
         if: steps.pr_check.outputs.is_open_pr == 'true'
@@ -75,7 +85,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '${{ steps.pr_check.response_header }} :interrobang: Something went wrong doing `[testpypi]`, please [check the log](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).'
+              body: '${{ steps.pr_check.outputs.response_header }} :interrobang: Something went wrong doing `[testpypi]`, please [check the log](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).'
             })
             
 #       - name: Do Robotics
