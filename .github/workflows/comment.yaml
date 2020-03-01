@@ -15,7 +15,7 @@ jobs:
       - name: Detect Open Pull Request
         id: pr_check
         run: |
-          is_pr="${{ startsWith(github.event.issue.html_url, 'https://github.com/${{ github.repository }}/pull') }}"
+          is_pr="${{ startsWith(github.event.issue.html_url, format('https://github.com/{0}/pull', github.repository)) }}"
           if [[ "$is_pr" == "false" ]] || [[ "${{ github.event.issue.state }}" == "closed" ]]; then
             output="false"
           else
@@ -35,7 +35,6 @@ jobs:
               repo: context.repo.repo,
               body: '${{ steps.pr_check.outputs.response_header }} :no_entry_sign: `[testpypi]` only applies to open pull requests.'
             })
-      
       - name: Setup Python
         if: steps.pr_check.outputs.is_open_pr == 'true'
         uses: actions/setup-python@v1
