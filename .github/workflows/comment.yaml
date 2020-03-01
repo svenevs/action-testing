@@ -35,6 +35,12 @@ jobs:
               repo: context.repo.repo,
               body: '${{ steps.pr_check.outputs.response_header }} :no_entry_sign: `[testpypi]` only applies to open pull requests.'
             })
+            github.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ github.event.comment.id }},
+              content: 'confused'
+            })
       - name: Setup Python
         if: steps.pr_check.outputs.is_open_pr == 'true'
         uses: actions/setup-python@v1
@@ -73,6 +79,12 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: '${{ steps.pr_check.outputs.response_header }} :interrobang: Something went wrong doing `[testpypi]`, please [check the log](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).'
+            })
+            github.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ github.event.comment.id }},
+              content: 'confused'
             })
             
 #       - name: Do Robotics
