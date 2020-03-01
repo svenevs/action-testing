@@ -35,8 +35,8 @@ jobs:
           else
             output="true"
           fi
-          echo "##set-output name=is_open_pr::$output"
-          echo "##set-output name=response_header::> @${{ github.event.comment.user.login }} _triggered in_ ${{ github.event.comment.html_url }} </blockquote>"
+          echo "::set-output name=is_open_pr::$output"
+          echo "::set-output name=response_header::> @${{ github.event.comment.user.login }} _triggered in_ ${{ github.event.comment.html_url }} </blockquote>"
       - name: DEBUG
         run: |
           echo "is_open_pr: ${{ steps.pr_check.outputs.is_open_pr }}"
