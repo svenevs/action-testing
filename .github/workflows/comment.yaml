@@ -6,76 +6,58 @@ on:
 jobs:
   dispatch:
     runs-on: ubuntu-latest
+    # NOTE: 
     if: contains(github.event.comment.body, '[testpypi]') && (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')
     steps:
+      # If the request is invalid (comment on issue or closed PR), a comment is added
+      # indicating the [testpypi] request was rejected.
+      #
       # Sets two output variables accessible by `steps.pr_check.<var>`:
-      #   - is_open_pr: 'true' or 'false', depending on if the comment was added on an open pull request.
-      #   - response_header: '> @<author> _triggered in_ <comment url> </blockquote>'
-      #     Used as a prefix to the response being posted, responses cannot have newlines but the </blockquote> hack works well enough.
-      - name: Detect Open Pull Request
+      #   - is_valid: true if comment on open pull request, false otherwise.
+      #   - header: prefix to include in comment responses (denotes what triggered).
+      - name: Validate [testpypi] Request
         id: pr_check
-        run: |
-          is_pr="${{ startsWith(github.event.issue.html_url, format('https://github.com/{0}/pull', github.repository)) }}"
-          if [[ "$is_pr" == "false" ]] || [[ "${{ github.event.issue.state }}" == "closed" ]]; then
-            output="false"
-          else
-            output="true"
-          fi
-          echo "::set-output name=is_open_pr::$output"
-          echo "::set-output name=response_header::> @${{ github.event.comment.user.login }} _triggered in_ ${{ github.event.comment.html_url }} </blockquote>"
-      - name: New World Order
-        # if: steps.pr_check.outputs.is_open_pr == 'false'
         uses: actions/github-script@0.8.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            // Comment events can occur for both issues and pull requests.  Determine if
+            // the comment was added on an open pull request.
             const is_pr = "${{ github.event.issue.html_url }}".startsWith(
               "https://github.com/" + "${{ github.repository }}" + "/pull");
             const is_closed = "${{ github.event.issue.state }}" == "closed";
-            console.log(["is_pr", is_pr]);
-            console.log(["is_closed", is_closed]);
-            /*
-            github.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '${{ steps.pr_check.outputs.response_header }} :no_entry_sign: `[testpypi]` only applies to open pull requests.'
-            })
-            github.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: ${{ github.event.comment.id }},
-              content: 'confused'
-            })
-            */
-      - name: Can I Do This
-        if: steps.pr_check.outputs.is_open_pr == 'true'
-        uses: actions/github-script@0.8.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const pr = await github.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: ${{ github.event.issue.number }}
-            })
-            console.log(pr)
-            github.git.getTree({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tree_sha: pr.data.head.sha
-            })
-      - name: Can I Do This Evidence
-        if: steps.pr_check.outputs.is_open_pr == 'true'
-        run: |
-          ls -alR
+            const is_valid = is_pr && !is_closed;
+            console.log("::set-output name=is_valid::" + is_valid);
+            
+            // Create a common comment response header.  </blockquote> is a hack to
+            // circumvent that the API does not support newlines in the body, as well
+            // set-output breaks on newlines too.
+            const header = "> @${{ github.event.comment.user.login }} " +
+                           "_triggered in_ ${{ github.event.comment.html_url }} " +
+                           "</blockquote>;
+            console.log("::set-output name=header::" + header);
+            
+            if (!is_valid) {
+              github.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `${header} :no_entry_sign: \`[testpypi]\` only applies to open pull requests.`
+              });
+              github.reactions.createForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: ${{ github.event.comment.id }},
+                content: "confused"
+              });
+            }
       - name: Setup Python
-        if: steps.pr_check.outputs.is_open_pr == 'true'
+        if: steps.pr_check.outputs.is_valid == 'true'
         uses: actions/setup-python@v1
         with:
           python-version: 3.x
       - name: Prepare Distribution
-        if: steps.pr_check.outputs.is_open_pr == 'true'
+        if: steps.pr_check.outputs.is_valid == 'true'
         run: |
           set -exo
 
@@ -88,25 +70,50 @@ jobs:
           # Install the build utilities.
           pip install -U pip setuptools wheel
           pip install tox
-          
-          # Gerrymander the version with a unique dev version to upload
-          # (cannot re-upload same version number more than once).
-          
-          exit 1
-      - name: DEBUG intermediate
-        if: steps.pr_check.outputs.is_open_pr == 'true'
-        run: echo 'does it still report errors if thing has a thing between them?'
+
+          # [tmp]
+          git clone https://github.com/ryan-roemer/sphinx-bootstrap-theme.git
+          cd sphinx-bootstrap-theme
+          git checkout feat/modern-ci-py-tooling
+          # [/tmp]
+          # Compute a dev version using an increasing numbering scheme since
+          # a given version number can only ever be uploaded once.
+          dev_version="$(python -c 'import time; \
+            from sphinx_bootstrap_theme import __version__; \
+            dev = "dev" + str(int(time.time())); \
+            major, minor, patch = __version__.split(".")[0:3]; \
+            v = ".".join([major, minor, patch, dev]); \
+            print(v)')"
+
+          # Replace the __version__ in __init__.py.  Verify there was a change.
+          sed 's/^\(__version__\).*$/\1 = "'"$dev_version"'"/' \
+            sphinx_bootstrap_theme/__init__.py > tmp
+          mv tmp sphinx_bootstrap_theme/__init__.py
+
+          if [ ! $(git diff --quiet) ]; then
+            echo 'No git diff but a diff was expected!' >&2
+            exit 1
+          fi
+          # Display the diff for the sake of the logs.
+          git --no-pager diff --color=always
+
+          # Build the distribution in order to upload to TestPyPI!
+          tox -e dist
       - name: Report Errors
         if: failure()
         uses: actions/github-script@0.8.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const header = "${{ steps.pr_check.outputs.header }}";
+            const run_url = "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}";
+            const comment = ":interrobang: Something went wrong doing `[testpypi]`, " +
+                            `please [check the log](${run_url}).`;
             github.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '${{ steps.pr_check.outputs.response_header }} :interrobang: Something went wrong doing `[testpypi]`, please [check the log](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).'
+              body: `${header} ${comment}`
             })
             github.reactions.createForIssueComment({
               owner: context.repo.owner,
@@ -114,73 +121,3 @@ jobs:
               comment_id: ${{ github.event.comment.id }},
               content: 'confused'
             })
-            
-#       - name: Do Robotics
-#         run: |
-#           set -exo
-
-#           # add_comment "some comment data in $1"
-#           function add_comment() {
-#             # > @author _triggered in_ {url to comment }
-#             #
-#             # $1
-#             #
-#             # Is the comment being generated.  Newlines are not OK to send, and
-#             # seems to be weird bug where I have to manually </blockquote>,
-#             # using <br /> didn't fix, everything stayed inside the quote.
-#             comment="> @${{ github.event.comment.user.login }} _triggered in_ ${{ github.event.comment.html_url }} </blockquote>$1"
-#             curl -X POST \
-#                  --url '${{ github.event.issue.comments_url }}' \
-#                  -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-#                  -H 'Content-Type: application/json' \
-#                  -d "{\"body\": \"$comment\"}"
-#           }
-
-#           # add_reaction "reaction_type"
-#           #
-#           # reaction_type can be:
-#           #   "+1", "-1", "laugh", "confused", "heart", "hooray", "rocket", "eyes"
-#           function add_reaction() {
-#             curl -X POST \
-#                  --url 'https://api.github.com/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions' \
-#                  -H 'Accept: application/vnd.github.squirrel-girl-preview' \
-#                  -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-#                  -H 'Content-Type: application/json' \
-#                  -d "{\"content\": \"$1\"}"
-#           }
-
-#           # In event of failure, try and notify users.
-#           function failure() {
-#               add_comment ':interrobang: Something went wrong doing `[testpypi]`, please [check the log](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).'
-#               exit 1
-#           }
-#           trap "failure" ERR
-
-#           html_url="${{ github.event.issue.html_url }}"
-#           pr_url="https://github.com/${{ github.repository }}/pull"
-#           is_pr="$(python -c "print('$html_url'.startswith('$pr_url'))")"
-
-#           if [[ "$is_pr" != "True" ]] || [[ "${{ github.event.issue.state }}" == "closed" ]]; then
-#             add_comment ':no_entry_sign: `[testpypi]` only applies to open pull requests.'
-#             add_reaction "confused"
-#           else
-#             # Clone and checkout the pull request.
-#             git clone ${{ github.event.repository.clone_url }}
-#             cd "${{ github.event.repository.name }}"
-#             git fetch origin pull/${{ github.event.issue.number }}/head:the-pr
-#             git checkout the-pr
-
-#             # Install the build utilities.
-#             pip install -U pip setuptools wheel
-#             pip install tox twine
-#             export SPHINX_BOOTSTRAP_THEME_DEV_VERSION="$(date +%s)"
-
-#             # Package and upload.
-#             tox -e dist
-#             twine upload --repository-url https://test.pypi.org/legacy/ \
-#                          --username "__token__" \
-#                          --password "${{ secrets.TEST_PYPI_PASSWORD }}" \
-#                          dist/*
-#             add_comment "devno: $SPHINX_BOOTSTRAP_THEME_DEV_VERSION"
-#             add_reaction "rocket"
-#           fi
