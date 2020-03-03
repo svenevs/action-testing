@@ -23,12 +23,19 @@ jobs:
           fi
           echo "::set-output name=is_open_pr::$output"
           echo "::set-output name=response_header::> @${{ github.event.comment.user.login }} _triggered in_ ${{ github.event.comment.html_url }} </blockquote>"
-      - name: Invalid testpypi Request
-        if: steps.pr_check.outputs.is_open_pr == 'false'
+      - name: New World Order
+        # if: steps.pr_check.outputs.is_open_pr == 'false'
         uses: actions/github-script@0.8.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const is_pr = "${{ github.event.issue.html_url }}".startsWith(
+              "https://github.com/" + "${{ github.repository }}" + "/pull");
+            const is_closed = "${{ github.event.issue.state }}" == "closed";
+            console.log(["is_pr", is_pr]);
+            console.log(["is_closed", is_closed]);
+            const is_pr = is_pr="${{ startsWith(github.event.issue.html_url, format('https://github.com/{0}/pull', github.repository)) }}"
+            /*
             github.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -41,6 +48,7 @@ jobs:
               comment_id: ${{ github.event.comment.id }},
               content: 'confused'
             })
+            */
       - name: Can I Do This
         if: steps.pr_check.outputs.is_open_pr == 'true'
         uses: actions/github-script@0.8.0
