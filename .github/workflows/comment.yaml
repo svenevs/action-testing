@@ -34,7 +34,6 @@ jobs:
             const is_closed = "${{ github.event.issue.state }}" == "closed";
             console.log(["is_pr", is_pr]);
             console.log(["is_closed", is_closed]);
-            const is_pr = is_pr="${{ startsWith(github.event.issue.html_url, format('https://github.com/{0}/pull', github.repository)) }}"
             /*
             github.issues.createComment({
               issue_number: context.issue.number,
