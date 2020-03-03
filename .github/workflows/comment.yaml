@@ -47,16 +47,16 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            github.pulls.get({
+            const pr = github.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: ${{ github.event.issue.number }}
             })
+            console.log(pr)
       - name: Can I Do This Evidence
         if: steps.pr_check.outputs.is_open_pr == 'true'
         run: |
-          ls -al
-          tree .
+          ls -alR
       - name: Setup Python
         if: steps.pr_check.outputs.is_open_pr == 'true'
         uses: actions/setup-python@v1
