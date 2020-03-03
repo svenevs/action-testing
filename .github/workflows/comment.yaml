@@ -53,6 +53,11 @@ jobs:
               pull_number: ${{ github.event.issue.number }}
             })
             console.log(pr)
+            github.git.getTree({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tree_sha: pr.data.head.sha
+            })
       - name: Can I Do This Evidence
         if: steps.pr_check.outputs.is_open_pr == 'true'
         run: |
