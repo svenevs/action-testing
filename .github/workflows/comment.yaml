@@ -90,10 +90,10 @@ jobs:
             sphinx_bootstrap_theme/__init__.py > tmp
           mv tmp sphinx_bootstrap_theme/__init__.py
 
-          if [ ! $(git diff --quiet) ]; then
-            echo 'No git diff but a diff was expected!' >&2
-            exit 1
-          fi
+          # if [ ! $(git diff --quiet) ]; then
+          #   echo 'No git diff but a diff was expected!' >&2
+          #   exit 1
+          # fi
           # Display the diff for the sake of the logs.
           git --no-pager diff --color=always
 
