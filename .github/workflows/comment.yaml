@@ -34,7 +34,7 @@ jobs:
             // set-output breaks on newlines too.
             const header = "> @${{ github.event.comment.user.login }} " +
                            "_triggered in_ ${{ github.event.comment.html_url }} " +
-                           "</blockquote>;
+                           "</blockquote>";
             console.log("::set-output name=header::" + header);
             
             if (!is_valid) {
