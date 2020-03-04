@@ -32,17 +32,18 @@ jobs:
             // Create a common comment response header.  </blockquote> is a hack to
             // circumvent that the API does not support newlines in the body, as well
             // set-output breaks on newlines too.
-            const header = "> @${{ github.event.comment.user.login }} " +
-                           "_triggered in_ ${{ github.event.comment.html_url }} " +
-                           "</blockquote>";
+            const header = "> @${{ github.event.comment.user.login }} _triggered in_ " +
+              "${{ github.event.comment.html_url }} </blockquote>";
             console.log("::set-output name=header::" + header);
             
             if (!is_valid) {
+              const comment = ":no_entry_sign: `[testpypi]` only applies to open " +
+                "pull requests.";
               github.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: `${header} :no_entry_sign: \`[testpypi]\` only applies to open pull requests.`
+                body: `${header} ${comment}`
               });
               github.reactions.createForIssueComment({
                 owner: context.repo.owner,
@@ -56,8 +57,11 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: 3.x
+      # Modify the __version__ in __init__.py to be able to upload to TestPyPI, set this
+      # as an output accessible via `steps.dist.outputs.dev_version`.
       - name: Prepare Distribution
         if: steps.pr_check.outputs.is_valid == 'true'
+        id: dist
         run: |
           set -exo
 
@@ -76,19 +80,20 @@ jobs:
           cd sphinx-bootstrap-theme
           git checkout feat/modern-ci-py-tooling
           # [/tmp]
-          # Compute a dev version using an increasing numbering scheme since
-          # a given version number can only ever be uploaded once.
+          # Compute a dev version using an increasing numbering scheme since a given
+          # version number can only ever be uploaded once.
           dev_version="$(python -c 'import time; \
             from sphinx_bootstrap_theme import __version__; \
             dev = "dev" + str(int(time.time())); \
             major, minor, patch = __version__.split(".")[0:3]; \
             v = ".".join([major, minor, patch, dev]); \
             print(v)')"
+          echo "::set-output name=dev_version::$dev_version"
 
           # Replace the __version__ in __init__.py.  Verify there was a change.
           sed 's/^\(__version__\).*$/\1 = "'"$dev_version"'"/' \
             sphinx_bootstrap_theme/__init__.py > tmp
-          # mv tmp sphinx_bootstrap_theme/__init__.py
+          mv tmp sphinx_bootstrap_theme/__init__.py
           
           # Display the changes, report error if no changes found.
           git diff --color=always > the_diff
@@ -100,6 +105,33 @@ jobs:
 
           # Build the distribution in order to upload to TestPyPI!
           tox -e dist
+      - name: Publish Package to TestPyPI
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: __token__
+          password: ${{ secrets.test_pypi_password }}
+          repository_url: https://test.pypi.org/legacy
+      - name: Report Packaged Version
+        uses: actions/github-script@0.8.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const header = "${{ steps.pr_check.outputs.header }}";
+            const comment = ":heavy_check_mark: Dispatched to TestPyPI!  Install " +
+              "using `pip install -i https://test.pypi.org/simple/ " +
+              "sphinx-bootstrap-theme==${{ steps.dist.outputs.dev_version }}`.";
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `${header} ${comment}`
+            });
+            github.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ github.event.comment.id }},
+              content: 'rocket'
+            })
       - name: Report Errors
         if: failure()
         uses: actions/github-script@0.8.0
@@ -109,16 +141,16 @@ jobs:
             const header = "${{ steps.pr_check.outputs.header }}";
             const run_url = "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}";
             const comment = ":interrobang: Something went wrong doing `[testpypi]`, " +
-                            `please [check the log](${run_url}).`;
+              `please [check the log](${run_url}).`;
             github.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `${header} ${comment}`
-            })
+            });
             github.reactions.createForIssueComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               comment_id: ${{ github.event.comment.id }},
               content: 'confused'
-            })
+            });
