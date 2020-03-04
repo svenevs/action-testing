@@ -92,8 +92,9 @@ jobs:
           
           # Display the changes, report error if no changes found.
           git diff --color=always > the_diff
-          if [ -s the_diff ]; then
+          if [ ! -s the_diff ]; then
             echo 'No git diff found, but a diff was expected!' >&2
+            exit 1
           fi
           cat the_diff
 
