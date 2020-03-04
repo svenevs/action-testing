@@ -80,7 +80,7 @@ jobs:
           cd ..
           rm -rf action-testing
           git clone https://github.com/ryan-roemer/sphinx-bootstrap-theme.git action-testing
-          cd sphinx-bootstrap-theme
+          cd action-testing
           git checkout feat/modern-ci-py-tooling
           # [/tmp]
           # Compute a dev version using an increasing numbering scheme since a given
