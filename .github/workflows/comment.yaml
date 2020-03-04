@@ -107,10 +107,11 @@ jobs:
           tox -e dist
 
           # Upload to TestPyPI!
+          # NOTE: trailing slash after legacy/ _required_!
           twine upload \
             --username "__token__" \
             --password "${{ secrets.test_pypi_password }}" \
-            --repository-url "https://test.pypi.org/legacy" \
+            --repository-url "https://test.pypi.org/legacy/" \
             dist/*
       - name: Report Packaged Version
         if: steps.pr_check.outputs.is_valid == 'true'
