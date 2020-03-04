@@ -76,7 +76,10 @@ jobs:
           pip install tox
 
           # [tmp]
-          git clone https://github.com/ryan-roemer/sphinx-bootstrap-theme.git
+          # Need to convince later stages this is the same repo (it gets mounted as $home/action-testing in docker)
+          cd ..
+          rm -rf action-testing
+          git clone https://github.com/ryan-roemer/sphinx-bootstrap-theme.git action-testing
           cd sphinx-bootstrap-theme
           git checkout feat/modern-ci-py-tooling
           # [/tmp]
