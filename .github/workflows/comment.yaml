@@ -89,13 +89,13 @@ jobs:
           sed 's/^\(__version__\).*$/\1 = "'"$dev_version"'"/' \
             sphinx_bootstrap_theme/__init__.py > tmp
           mv tmp sphinx_bootstrap_theme/__init__.py
-
-          if [ ! $(git diff --exit-code --quiet) ]; then
-            echo 'No git diff but a diff was expected!' >&2
-            exit 1
+          
+          # Display the changes, report error if no changes found.
+          git diff --color=always > the_diff
+          if [ -s the_diff ]; then
+            echo 'No git diff found, but a diff was expected!' >&2
           fi
-          # Display the diff for the sake of the logs.
-          git --no-pager diff --color=always
+          cat the_diff
 
           # Build the distribution in order to upload to TestPyPI!
           tox -e dist
