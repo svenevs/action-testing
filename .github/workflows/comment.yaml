@@ -113,6 +113,7 @@ jobs:
             --repository-url "https://test.pypi.org/legacy" \
             dist/*
       - name: Report Packaged Version
+        if: steps.pr_check.outputs.is_valid == 'true'
         uses: actions/github-script@0.8.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
