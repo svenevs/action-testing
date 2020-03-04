@@ -106,12 +106,14 @@ jobs:
           # Build the distribution in order to upload to TestPyPI!
           tox -e dist
       - name: Publish Package to TestPyPI
+        if: steps.pr_check.outputs.is_valid == 'true'
         uses: pypa/gh-action-pypi-publish@master
         with:
           user: __token__
           password: ${{ secrets.test_pypi_password }}
           repository_url: https://test.pypi.org/legacy
       - name: Report Packaged Version
+        if: steps.pr_check.outputs.is_valid == 'true'
         uses: actions/github-script@0.8.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
