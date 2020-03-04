@@ -59,7 +59,7 @@ jobs:
           python-version: 3.x
       # Modify the __version__ in __init__.py to be able to upload to TestPyPI, set this
       # as an output accessible via `steps.dist.outputs.dev_version`.
-      - name: Prepare Distribution
+      - name: Prepare and Upload Distribution
         if: steps.pr_check.outputs.is_valid == 'true'
         id: dist
         run: |
@@ -73,14 +73,11 @@ jobs:
 
           # Install the build utilities.
           pip install -U pip setuptools wheel
-          pip install tox
+          pip install tox twine
 
           # [tmp]
-          # Need to convince later stages this is the same repo (it gets mounted as $home/action-testing in docker)
-          cd ..
-          rm -rf action-testing
-          git clone https://github.com/ryan-roemer/sphinx-bootstrap-theme.git action-testing
-          cd action-testing
+          git clone https://github.com/ryan-roemer/sphinx-bootstrap-theme.git
+          cd sphinx-bootstrap-theme
           git checkout feat/modern-ci-py-tooling
           # [/tmp]
           # Compute a dev version using an increasing numbering scheme since a given
@@ -106,17 +103,16 @@ jobs:
           fi
           cat the_diff
 
-          # Build the distribution in order to upload to TestPyPI!
+          # Build the distribution.
           tox -e dist
-      - name: Publish Package to TestPyPI
-        if: steps.pr_check.outputs.is_valid == 'true'
-        uses: pypa/gh-action-pypi-publish@master
-        with:
-          user: __token__
-          password: ${{ secrets.test_pypi_password }}
-          repository_url: https://test.pypi.org/legacy
+
+          # Upload to TestPyPI!
+          twine upload \
+            --username "__token__" \
+            --password "${{ secrets.test_pypi_password }}" \
+            --repository-url "https://test.pypi.org/legacy" \
+            dist/*
       - name: Report Packaged Version
-        if: steps.pr_check.outputs.is_valid == 'true'
         uses: actions/github-script@0.8.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
