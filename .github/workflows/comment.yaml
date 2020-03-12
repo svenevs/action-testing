@@ -4,9 +4,12 @@ on:
     types: [created]
 
 jobs:
-  dispatch:
+  deploy:
     runs-on: ubuntu-latest
-    if: contains(github.event.comment.body, '[testpypi]') && (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')
+    if: >
+        contains(github.event.comment.body, '[testpypi]') && 
+        (github.event.comment.author_association == 'OWNER' ||
+          github.event.comment.author_association == 'COLLABORATOR')
     steps:
       # If the request is invalid (comment on issue or closed PR), a comment is added
       # indicating the [testpypi] request was rejected.
