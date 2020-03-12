@@ -120,7 +120,7 @@ jobs:
           script: |
             const header = "${{ steps.pr_check.outputs.header }}";
             const version = "${{ steps.dist.outputs.dev_version }}";
-            const test_pypi_url = `https://test.pypi.org/simple/${version}/`;
+            const url = `https://test.pypi.org/simple/${version}/`;
             const comment = ":heavy_check_mark: [Deployed to TestPyPI](${url})!  ` +
               "Install using `pip install -i https://test.pypi.org/simple/ " +
               `sphinx-bootstrap-theme==${version}\`.`;
