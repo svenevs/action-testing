@@ -6,7 +6,6 @@ on:
 jobs:
   dispatch:
     runs-on: ubuntu-latest
-    # NOTE: 
     if: contains(github.event.comment.body, '[testpypi]') && (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')
     steps:
       # If the request is invalid (comment on issue or closed PR), a comment is added
@@ -120,9 +119,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const header = "${{ steps.pr_check.outputs.header }}";
-            const comment = ":heavy_check_mark: Dispatched to TestPyPI!  Install " +
-              "using `pip install -i https://test.pypi.org/simple/ " +
-              "sphinx-bootstrap-theme==${{ steps.dist.outputs.dev_version }}`.";
+            const version = "${{ steps.dist.outputs.dev_version }}";
+            const test_pypi_url = `https://test.pypi.org/simple/${version}/`;
+            const comment = ":heavy_check_mark: [Deployed to TestPyPI](${url})!  ` +
+              "Install using `pip install -i https://test.pypi.org/simple/ " +
+              `sphinx-bootstrap-theme==${version}\`.`;
             github.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
