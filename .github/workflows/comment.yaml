@@ -2,15 +2,22 @@ name: TestPyPI
 on:
   issue_comment:
     types: [created]
+  pull_request_review_comment:
+    types: [created]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     if: >
-        contains(github.event.comment.body, '[testpypi]') && 
+        contains(github.event.comment.body, '[testpypi]') &&
         (github.event.comment.author_association == 'OWNER' ||
           github.event.comment.author_association == 'COLLABORATOR')
     steps:
+      # Useful to debug what ${{ github.event }} has depending on triggers above.
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
       # If the request is invalid (comment on issue or closed PR), a comment is added
       # indicating the [testpypi] request was rejected.
       #
@@ -30,14 +37,14 @@ jobs:
             const is_closed = "${{ github.event.issue.state }}" == "closed";
             const is_valid = is_pr && !is_closed;
             console.log("::set-output name=is_valid::" + is_valid);
-            
+
             // Create a common comment response header.  </blockquote> is a hack to
             // circumvent that the API does not support newlines in the body, as well
             // set-output breaks on newlines too.
             const header = "> @${{ github.event.comment.user.login }} _triggered in_ " +
               "${{ github.event.comment.html_url }} </blockquote>";
             console.log("::set-output name=header::" + header);
-            
+
             if (!is_valid) {
               const comment = ":no_entry_sign: `[testpypi]` only applies to open " +
                 "pull requests.";
@@ -78,14 +85,13 @@ jobs:
           pip install tox twine
 
           # [tmp]
-          git clone https://github.com/ryan-roemer/sphinx-bootstrap-theme.git
-          cd sphinx-bootstrap-theme
-          git checkout feat/modern-ci-py-tooling
+          git clone https://github.com/svenevs/exhale.git
+          cd exhale
           # [/tmp]
           # Compute a dev version using an increasing numbering scheme since a given
           # version number can only ever be uploaded once.
           dev_version="$(python -c 'import time; \
-            from sphinx_bootstrap_theme import __version__; \
+            from exhale import __version__; \
             dev = "dev" + str(int(time.time())); \
             major, minor, patch = __version__.split(".")[0:3]; \
             v = ".".join([major, minor, patch, dev]); \
@@ -94,9 +100,9 @@ jobs:
 
           # Replace the __version__ in __init__.py.  Verify there was a change.
           sed 's/^\(__version__\).*$/\1 = "'"$dev_version"'"/' \
-            sphinx_bootstrap_theme/__init__.py > tmp
-          mv tmp sphinx_bootstrap_theme/__init__.py
-          
+            exhale/__init__.py > tmp
+          mv tmp exhale/__init__.py
+
           # Display the changes, report error if no changes found.
           git diff --color=always > the_diff
           if [ ! -s the_diff ]; then
@@ -123,10 +129,10 @@ jobs:
           script: |
             const header = "${{ steps.pr_check.outputs.header }}";
             const version = "${{ steps.dist.outputs.dev_version }}";
-            const url = `https://test.pypi.org/project/sphinx-bootstrap-theme/${version}/`;
+            const url = `https://test.pypi.org/project/exhale/${version}/`;
             const comment = `:heavy_check_mark: [Deployed to TestPyPI](${url})!  ` +
               "Install using `pip install -i https://test.pypi.org/simple/ " +
-              `sphinx-bootstrap-theme==${version}\`.`;
+              `exhale==${version}\`.`;
             github.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
